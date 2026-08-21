@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduCare J&K - Student Risk & Learning Dashboard</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Leaflet Map CSS/JS for Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#0c4a6e',
+              800: '#075985',
+              900: '#0f172a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+    
+    * {
+      box-sizing: border-box;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    body {
+      background-color: #0f172a;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+
+    .sidebar-item-active {
+      background-color: #0284c7;
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .leaflet-control-container .leaflet-control-zoom {
+      display: none;
+    }
+  </style>
+</head>
+
+<body class="flex h-screen overflow-hidden text-slate-800 bg-slate-100">
+
+  <!-- ================= LEFT SIDEBAR PANEL ================= -->
+  <aside id="sidebar" class="w-64 bg-slate-900 text-slate-300 flex flex-col justify-between p-4 flex-shrink-0 transition-all duration-300 border-r border-slate-800 z-40">
+    <div class="space-y-6">
+      
+      <!-- Logo and Header -->
+      <div class="flex items-center space-x-3 px-2 pt-1">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white text-xl shadow-md flex-shrink-0">
+          <i class="ph-bold ph-graduation-cap"></i>
+        </div>
+        <div class="overflow-hidden">
+          <div class="flex items-center gap-1.5">
+            <span class="text-base font-bold text-white tracking-tight">EduCare</span>
+            <span class="text-xs bg-sky-500/20 text-sky-400 font-semibold px-1.5 py-0.2 rounded border border-sky-500/30">J&amp;K</span>
+          </div>
+          <span class="block text-[10px] text-slate-400 truncate">Project RASTA • SIH 2026</span>
+        </div>
+      </div>
+
+      <!-- Navigation Menu Items -->
+      <div class="space-y-1">
+        <div class="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Core Navigation</div>
+        
+        <button id="side-overview" onclick="switchTab('overview')" class="sidebar-item-active w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition text-left text-xs">
+          <i class="ph-bold ph-squares-four text-base"></i>
+          <span>Overview</span>
+        </button>
+        
+        <button id="side-teacher" onclick="switchTab('teacher')" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition text-left text-xs">
+          <i class="ph-bold ph-chalkboard-teacher text-base"></i>
+          <span>Teacher / Retain</span>
+        </button>
+
+        <button id="side-student" onclick="switchTab('student')" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition text-left text-xs">
+          <i class="ph-bold ph-exam text-base"></i>
+          <span>Diagnostic / Reinforce</span>
+        </button>
+
+        <button id="side-lessons" onclick="switchTab('lessons')" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition text-left text-xs">
+          <i class="ph-bold ph-cloud-slash text-base"></i>
+          <span>Offline Packs / Reach</span>
+        </button>
+
+        <button id="side-career" onclick="switchTab('career')" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition text-left text-xs">
+          <i class="ph-bold ph-compass text-base"></i>
+          <span>Career / Recommend</span>
+        </button>
+
+        <button id="side-wellbeing" onclick="switchTab('wellbeing')" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition text-left text-xs">
+          <i class="ph-bold ph-heartbeat text-base"></i>
+          <span>Stress &amp; Wellbeing</span>
+        </button>
+      </div>
+
+      <!-- Quick Action Section -->
+      <div class="pt-2 border-t border-slate-800 space-y-1">
+        <div class="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Quick Actions</div>
+        <button onclick="openNudgeModal()" class="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-indigo-900/40 border border-indigo-700/50 text-indigo-300 hover:bg-indigo-900/70 text-xs font-semibold transition">
+          <span class="flex items-center gap-2"><i class="ph-bold ph-paper-plane-tilt"></i> Send Nudge</span>
+          <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- User / Team Footer -->
+    <div class="border-t border-slate-800 pt-3">
+      <div class="bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/50 flex items-center justify-between">
+        <div class="flex items-center space-x-2.5 overflow-hidden">
+          <div class="w-8 h-8 rounded-lg bg-sky-600/30 text-sky-400 font-bold flex items-center justify-center text-xs flex-shrink-0">
+            M
+          </div>
+          <div class="truncate">
+            <p class="text-xs font-bold text-white truncate">Mayank (Lead)</p>
+            <p class="text-[10px] text-slate-400 truncate">6 Team Members</p>
+          </div>
+        </div>
+        <button onclick="alert('Logged in as Team Admin: Mayank, Yaksh, Raja, Ved, Janvi, Mahi')" class="text-slate-400 hover:text-white">
+          <i class="ph-bold ph-info text-base"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN CONTENT WRAPPER ================= -->
+  <div class="flex-1 flex flex-col h-full overflow-hidden">
+
+    <!-- Top Header Bar -->
+    <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
+      <div class="flex items-center space-x-3">
+        <!-- Toggle Sidebar on small screens -->
+        <button onclick="toggleSidebar()" class="text-slate-600 hover:text-slate-900 p-1.5 rounded-lg hover:bg-slate-100 md:hidden">
+          <i class="ph-bold ph-list text-xl"></i>
+        </button>
+        <div>
+          <h2 id="view-title" class="text-lg font-bold text-slate-900">System Overview</h2>
+          <p class="text-xs text-slate-500">Government of Jammu &amp; Kashmir • Early Warning &amp; Advisory Engine</p>
+        </div>
+      </div>
+
+      <!-- Controls: Languages & Offline Status -->
+      <div class="flex items-center space-x-3">
+        <!-- Language selector -->
+        <div class="flex items-center bg-slate-100 rounded-lg p-1 text-xs border border-slate-200">
+          <button id="lang-en" onclick="setLang('en')" class="px-2 py-0.5 rounded bg-sky-600 text-white font-semibold">EN</button>
+          <button id="lang-ur" onclick="setLang('ur')" class="px-2 py-0.5 rounded text-slate-600 hover:text-slate-900">اردو</button>
+          <button id="lang-ks" onclick="setLang('ks')" class="px-2 py-0.5 rounded text-slate-600 hover:text-slate-900">कॉशुर</button>
+        </div>
+
+        <!-- Offline Toggle -->
+        <div class="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+          <i id="network-icon" class="ph-bold ph-wifi-high text-emerald-600 text-sm"></i>
+          <span id="network-status" class="text-xs font-semibold text-emerald-700">Online</span>
+          <button onclick="toggleOffline()" class="text-[10px] ml-1 bg-white hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded border border-slate-300 font-semibold shadow-2xs">
+            Toggle
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Offline Banner -->
+    <div id="offline-banner" class="hidden bg-amber-500 text-slate-950 text-xs font-bold text-center py-1 px-4 flex-shrink-0">
+      <i class="ph-bold ph-cloud-slash mr-1"></i> Offline Mode: Cached lessons available, telemetry will sync automatically upon reconnection.
+    </div>
+
+    <!-- Scrollable Content Pane -->
+    <main class="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-6">
+
+      <!-- ================= 1. OVERVIEW VIEW ================= -->
+      <div id="view-overview" class="space-y-6">
+        
+        <!-- Blue Highlight Strip -->
+        <div class="bg-gradient-to-r from-blue-700 via-indigo-700 to-sky-700 text-white rounded-xl p-4 shadow-sm flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <i class="ph-bold ph-shield-check text-2xl text-amber-300"></i>
+            <div>
+              <h3 class="font-bold text-sm">Turning Scattered School Data Into Action</h3>
+              <p class="text-xs text-blue-100">Proactively identify dropout vulnerability and learning gaps across J&amp;K schools.</p>
+            </div>
+          </div>
+          <span class="text-[11px] bg-white/20 px-3 py-1 rounded-full font-semibold">4-R Framework</span>
+        </div>
+
+        <!-- 3-Column Infographic Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+          
+          <!-- Left 3 Features -->
+          <div class="lg:col-span-3 flex flex-col justify-between space-y-3">
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <div class="flex items-start gap-3">
+                <span class="w-8 h-8 rounded-full bg-rose-600 text-white font-bold flex items-center justify-center text-xs flex-shrink-0">1</span>
+                <div>
+                  <h4 class="text-xs font-bold text-slate-900">Dropout Risk Prediction</h4>
+                  <p class="text-[11px] text-slate-500 mt-1">Multi-factor weighted scoring: attendance, lost days, and exam history.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <div class="flex items-start gap-3">
+                <span class="w-8 h-8 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-xs flex-shrink-0">2</span>
+                <div>
+                  <h4 class="text-xs font-bold text-slate-900">Learning Gap Tracker</h4>
+                  <p class="text-[11px] text-slate-500 mt-1">Pinpoints specific weaknesses in Reading &amp; Math through micro-quizzes.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <div class="flex items-start gap-3">
+                <span class="w-8 h-8 rounded-full bg-sky-600 text-white font-bold flex items-center justify-center text-xs flex-shrink-0">3</span>
+                <div>
+                  <h4 class="text-xs font-bold text-slate-900">Offline-First Design</h4>
+                  <p class="text-[11px] text-slate-500 mt-1">Enables continuous learning and local caching when internet is unavailable.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Center Dashboard Cards (Clean Canvas) -->
+          <div class="lg:col-span-6 bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col justify-between space-y-4">
+            <!-- 4 Top Counters -->
+            <div class="grid grid-cols-4 gap-2 text-center">
+              <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                <span class="text-[10px] text-slate-400 font-bold uppercase block">At-Risk</span>
+                <span class="text-lg font-extrabold text-rose-600">12.4%</span>
+                <span class="text-[9px] text-rose-600 bg-rose-50 px-1 py-0.5 rounded font-semibold block mt-0.5">High Risk</span>
+              </div>
+              <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                <span class="text-[10px] text-slate-400 font-bold uppercase block">Learning Gap</span>
+                <span class="text-lg font-extrabold text-amber-500">21%</span>
+                <span class="text-[9px] text-amber-700 bg-amber-50 px-1 py-0.5 rounded font-semibold block mt-0.5">&lt; Grade Level</span>
+              </div>
+              <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                <span class="text-[10px] text-slate-400 font-bold uppercase block">Lost Days</span>
+                <span class="text-lg font-extrabold text-blue-600">30%+</span>
+                <span class="text-[9px] text-blue-700 bg-blue-50 px-1 py-0.5 rounded font-semibold block mt-0.5">Disrupted</span>
+              </div>
+              <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                <span class="text-[10px] text-slate-400 font-bold uppercase block">Stress Alerts</span>
+                <span class="text-lg font-extrabold text-emerald-600">18%</span>
+                <span class="text-[9px] text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded font-semibold block mt-0.5">Need Help</span>
+              </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <span class="text-xs font-bold text-slate-700 mb-1 block">Risk Distribution</span>
+                <div class="h-24 flex items-center justify-center">
+                  <canvas id="overviewDonut"></canvas>
+                </div>
+              </div>
+              <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <span class="text-xs font-bold text-slate-700 mb-1 block">District Heatmap (J&amp;K)</span>
+                <div id="overview-map" class="h-24 w-full rounded border border-slate-200"></div>
+              </div>
+            </div>
+
+            <!-- Action Status Bars -->
+            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-bold text-slate-700">Top Priority Actions</span>
+                <span class="text-[10px] text-slate-400">Total: 4,415 cases</span>
+              </div>
+              <div class="space-y-1.5 text-xs">
+                <div class="flex justify-between items-center bg-white px-2.5 py-1 rounded border border-slate-200">
+                  <span class="flex items-center gap-1.5 text-slate-600 text-[11px]"><i class="ph-fill ph-check-circle text-emerald-500"></i> Counselling Needed</span>
+                  <span class="font-bold text-slate-800 text-[11px]">1,245</span>
+                </div>
+                <div class="flex justify-between items-center bg-white px-2.5 py-1 rounded border border-slate-200">
+                  <span class="flex items-center gap-1.5 text-slate-600 text-[11px]"><i class="ph-fill ph-check-circle text-emerald-500"></i> Learning Support</span>
+                  <span class="font-bold text-slate-800 text-[11px]">2,184</span>
+                </div>
+                <div class="flex justify-between items-center bg-white px-2.5 py-1 rounded border border-slate-200">
+                  <span class="flex items-center gap-1.5 text-slate-600 text-[11px]"><i class="ph-fill ph-check-circle text-emerald-500"></i> Attendance Alerts</span>
+                  <span class="font-bold text-slate-800 text-[11px]">986</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Right 3 Features -->
+          <div class="lg:col-span-3 flex flex-col justify-between space-y-3">
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <div class="flex items-start gap-3">
+                <span class="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-xs flex-shrink-0">4</span>
+                <div>
+                  <h4 class="text-xs font-bold text-slate-900">District Heatmap</h4>
+                  <p class="text-[11px] text-slate-500 mt-1">Geo-spatial insights to allocate mobile educators &amp; remedial resources.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <div class="flex items-start gap-3">
+                <span class="w-8 h-8 rounded-full bg-amber-500 text-white font-bold flex items-center justify-center text-xs flex-shrink-0">5</span>
+                <div>
+                  <h4 class="text-xs font-bold text-slate-900">Lost-Days Tracker</h4>
+                  <p class="text-[11px] text-slate-500 mt-1">Logs weather closures to automatically trigger catch-up roadmaps.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <div class="flex items-start gap-3">
+                <span class="w-8 h-8 rounded-full bg-purple-600 text-white font-bold flex items-center justify-center text-xs flex-shrink-0">6</span>
+                <div>
+                  <h4 class="text-xs font-bold text-slate-900">Stress Check-In</h4>
+                  <p class="text-[11px] text-slate-500 mt-1">Confidential wellbeing check-ins routed directly to counselor queues.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 5-Step Process Pipeline -->
+        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div class="grid grid-cols-1 sm:grid-cols-5 gap-3 text-center sm:text-left">
+            <div class="flex items-center space-x-2.5 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+              <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm"><i class="ph-bold ph-buildings"></i></div>
+              <div><p class="text-xs font-bold">1. School Data</p><p class="text-[10px] text-slate-500">Attendance, Marks</p></div>
+            </div>
+
+            <div class="flex items-center space-x-2.5 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+              <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm"><i class="ph-bold ph-cpu"></i></div>
+              <div><p class="text-xs font-bold">2. AI Analysis</p><p class="text-[10px] text-slate-500">Predict &amp; Triage</p></div>
+            </div>
+
+            <div class="flex items-center space-x-2.5 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+              <div class="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-sm"><i class="ph-bold ph-warning"></i></div>
+              <div><p class="text-xs font-bold">3. Early Warning</p><p class="text-[10px] text-slate-500">Stop Dropouts</p></div>
+            </div>
+
+            <div class="flex items-center space-x-2.5 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+              <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-sm"><i class="ph-bold ph-target"></i></div>
+              <div><p class="text-xs font-bold">4. Targeted Support</p><p class="text-[10px] text-slate-500">Micro-Lessons</p></div>
+            </div>
+
+            <div class="flex items-center space-x-2.5 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+              <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm"><i class="ph-bold ph-trend-up"></i></div>
+              <div><p class="text-xs font-bold">5. Better Outcomes</p><p class="text-[10px] text-slate-500">Career Retention</p></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ================= 2. TEACHER PORTAL ================= -->
+      <div id="view-teacher" class="hidden space-y-5">
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-rose-600 bg-rose-50 px-2 py-0.5 rounded">Pillar 1: RETAIN</span>
+            <h2 class="text-xl font-bold text-slate-900 mt-1">Teacher Early Warning Dashboard</h2>
+            <p class="text-xs text-slate-500">Transparent 3-factor weighted model for immediate intervention.</p>
+          </div>
+          <div class="text-xs bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg font-mono text-slate-700">
+            Risk = (100 - Att)*0.4 + (100 - Quiz)*0.35 + (LostDays/30*100)*0.25
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <!-- Table -->
+          <div class="lg:col-span-7 bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-800 mb-3">Class 10 - Ganderbal High School (Click row to test live slider)</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 text-slate-500 uppercase">
+                  <tr>
+                    <th class="p-2.5">Name</th>
+                    <th class="p-2.5">Attendance</th>
+                    <th class="p-2.5">Quiz Avg</th>
+                    <th class="p-2.5">Lost Days</th>
+                    <th class="p-2.5">Risk Level</th>
+                    <th class="p-2.5 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  <tr class="hover:bg-slate-50 cursor-pointer bg-rose-50/50" onclick="loadStudentForDemo('Rohan Sharma', 54, 38, 16)">
+                    <td class="p-2.5 font-bold text-slate-900">Rohan Sharma</td>
+                    <td class="p-2.5">54%</td>
+                    <td class="p-2.5">38%</td>
+                    <td class="p-2.5">16</td>
+                    <td class="p-2.5"><span class="px-2 py-0.5 bg-rose-100 text-rose-700 font-bold rounded">HIGH (73%)</span></td>
+                    <td class="p-2.5 text-right text-sky-600 font-bold">Simulate</td>
+                  </tr>
+                  <tr class="hover:bg-slate-50 cursor-pointer" onclick="loadStudentForDemo('Tariq Ahmad', 72, 60, 9)">
+                    <td class="p-2.5 font-bold text-slate-900">Tariq Ahmad</td>
+                    <td class="p-2.5">72%</td>
+                    <td class="p-2.5">60%</td>
+                    <td class="p-2.5">9</td>
+                    <td class="p-2.5"><span class="px-2 py-0.5 bg-amber-100 text-amber-700 font-bold rounded">MED (43%)</span></td>
+                    <td class="p-2.5 text-right text-sky-600 font-bold">Simulate</td>
+                  </tr>
+                  <tr class="hover:bg-slate-50 cursor-pointer" onclick="loadStudentForDemo('Ayesha Khan', 92, 85, 2)">
+                    <td class="p-2.5 font-bold text-slate-900">Ayesha Khan</td>
+                    <td class="p-2.5">92%</td>
+                    <td class="p-2.5">85%</td>
+                    <td class="p-2.5">2</td>
+                    <td class="p-2.5"><span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 font-bold rounded">LOW (14%)</span></td>
+                    <td class="p-2.5 text-right text-sky-600 font-bold">Simulate</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Live Risk Slider -->
+          <div class="lg:col-span-5 bg-white rounded-xl border-2 border-indigo-200 p-4 shadow-sm space-y-3">
+            <div class="flex justify-between items-center">
+              <div>
+                <h4 class="font-bold text-slate-900 text-sm">Interactive Risk Simulator</h4>
+                <p class="text-xs text-slate-500">Inspecting: <span id="demo-student-name" class="font-bold text-indigo-600">Rohan Sharma</span></p>
+              </div>
+              <span class="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded font-bold">Live Math</span>
+            </div>
+
+            <div class="space-y-2.5 text-xs">
+              <div>
+                <div class="flex justify-between font-semibold text-slate-700 mb-1">
+                  <span>Attendance:</span>
+                  <span id="demo-att-val" class="text-indigo-600 font-bold">54%</span>
+                </div>
+                <input id="demo-att" type="range" min="0" max="100" value="54" class="w-full accent-indigo-600" oninput="updateDemoRisk()">
+              </div>
+
+              <div>
+                <div class="flex justify-between font-semibold text-slate-700 mb-1">
+                  <span>Diagnostic Score:</span>
+                  <span id="demo-quiz-val" class="text-indigo-600 font-bold">38%</span>
+                </div>
+                <input id="demo-quiz" type="range" min="0" max="100" value="38" class="w-full accent-indigo-600" oninput="updateDemoRisk()">
+              </div>
+
+              <div>
+                <div class="flex justify-between font-semibold text-slate-700 mb-1">
+                  <span>Disrupted / Snow Days:</span>
+                  <span id="demo-days-val" class="text-indigo-600 font-bold">16 Days</span>
+                </div>
+                <input id="demo-days" type="range" min="0" max="30" value="16" class="w-full accent-indigo-600" oninput="updateDemoRisk()">
+              </div>
+            </div>
+
+            <div id="demo-result-card" class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-center">
+              <span class="text-[10px] text-slate-600 font-semibold uppercase">Computed Risk Score</span>
+              <div id="demo-risk-val" class="text-2xl font-black text-rose-600 my-0.5">73%</div>
+              <div id="demo-risk-tag" class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-200 text-rose-800">High Risk Level</div>
+            </div>
+
+            <button onclick="openNudgeModal()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg uppercase tracking-wider transition">
+              Dispatch Guardian Nudge (SMS)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= 3. DIAGNOSTIC ASSESSMENT ================= -->
+      <div id="view-student" class="hidden max-w-2xl mx-auto space-y-4">
+        <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          <div class="flex justify-between items-center border-b pb-3 mb-4">
+            <div>
+              <span class="text-xs font-bold uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">Pillar 2: REINFORCE</span>
+              <h2 class="text-lg font-bold text-slate-900 mt-1">Adaptive Diagnostic Screener</h2>
+            </div>
+            <span id="diag-tracker" class="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">Question 1 of 3</span>
+          </div>
+
+          <div id="diag-q-container">
+            <div id="diag-card-1">
+              <p class="text-sm font-semibold text-slate-800 mb-3">[Math] A fruit orchard produces 240 boxes of apples. If 3/8 are sold locally, how many boxes remain for export?</p>
+              <div class="space-y-2">
+                <button onclick="recordAnswerStep(1, false)" class="w-full text-left p-2.5 text-xs border rounded-lg hover:bg-sky-50">A) 90 Boxes</button>
+                <button onclick="recordAnswerStep(1, true)" class="w-full text-left p-2.5 text-xs border rounded-lg hover:bg-sky-50">B) 150 Boxes</button>
+                <button onclick="recordAnswerStep(1, false)" class="w-full text-left p-2.5 text-xs border rounded-lg hover:bg-sky-50">C) 120 Boxes</button>
+              </div>
+            </div>
+
+            <div id="diag-card-2" class="hidden">
+              <p class="text-sm font-semibold text-slate-800 mb-3">[Applied Science] Which energy source is ideal for remote off-grid schools across J&amp;K during winter?</p>
+              <div class="space-y-2">
+                <button onclick="recordAnswerStep(2, true)" class="w-full text-left p-2.5 text-xs border rounded-lg hover:bg-sky-50">A) Solar Micro-Grid + Storage</button>
+                <button onclick="recordAnswerStep(2, false)" class="w-full text-left p-2.5 text-xs border rounded-lg hover:bg-sky-50">B) Diesel Generators Only</button>
+                <button onclick="recordAnswerStep(2, false)" class="w-full text-left p-2.5 text-xs border rounded-lg hover:bg-sky-50">C) Geothermal Plants</button>
+              </div>
+            </div>
+
+            <div id="diag-card-3" class="hidden">
+              <p class="text-sm font-semibold text-slate-800 mb-3">[Vocational Interest] Which domain do you find most interesting?</p>
+              <div class="space-y-2">
+                <button onclick="finishAssessment('Horticulture')" class="w-full text-left p-2.5 text-xs border rounded-lg hover:bg-sky-50">A) Smart Agricultural Farming &amp; Cold Storage</button>
+                <button onclick="finishAssessment('Renewables')" class="w-full text-left p-2.5 text-xs border rounded-lg hover:bg-sky-50">B) Solar &amp; Renewable Energy Maintenance</button>
+                <button onclick="finishAssessment('IT')" class="w-full text-left p-2.5 text-xs border rounded-lg hover:bg-sky-50">C) Software, App Development &amp; Networking</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="diag-summary" class="hidden space-y-3 pt-2">
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-800">
+              <strong>Assessment Complete:</strong> Strong scientific foundation identified. Learning gap flagged in: <strong>Fractions &amp; Algebra</strong>.
+            </div>
+            <div class="flex gap-2">
+              <button onclick="switchTab('lessons')" class="flex-1 py-2 bg-sky-600 text-white rounded-lg text-xs font-semibold">Open Micro-Lessons</button>
+              <button onclick="switchTab('career')" class="flex-1 py-2 bg-slate-800 text-white rounded-lg text-xs font-semibold">View Recommended Careers</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= 4. OFFLINE LESSONS ================= -->
+      <div id="view-lessons" class="hidden max-w-3xl mx-auto space-y-4">
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+          <div>
+            <span class="text-xs font-bold uppercase text-amber-600 bg-amber-50 px-2 py-0.5 rounded">Pillar 3: REACH</span>
+            <h2 class="text-lg font-bold text-slate-900 mt-1">Offline-First Micro-Lessons</h2>
+            <p class="text-xs text-slate-500">Cached modules run seamlessly without internet.</p>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <div class="w-9 h-9 rounded-lg bg-sky-100 text-sky-600 flex items-center justify-center font-bold"><i class="ph-bold ph-math-operations"></i></div>
+              <div>
+                <h4 class="text-xs font-bold text-slate-900">Fractions, Ratios &amp; Decimals (Remedial)</h4>
+                <p class="text-[10px] text-slate-500">5 Mins Read • 1.2 MB</p>
+              </div>
+            </div>
+            <button id="dl-1" onclick="downloadLesson(1)" class="px-3 py-1.5 border border-sky-600 text-sky-600 rounded-lg text-xs font-semibold hover:bg-sky-50">Download</button>
+          </div>
+
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <div class="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold"><i class="ph-bold ph-sun"></i></div>
+              <div>
+                <h4 class="text-xs font-bold text-slate-900">Solar Power &amp; Renewable Energy Intro</h4>
+                <p class="text-[10px] text-slate-500">6 Mins Read • 2.0 MB</p>
+              </div>
+            </div>
+            <button id="dl-2" onclick="downloadLesson(2)" class="px-3 py-1.5 bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-lg text-xs font-semibold">Cached</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= 5. CAREER RECOMMENDATIONS ================= -->
+      <div id="view-career" class="hidden max-w-4xl mx-auto space-y-4">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <span class="text-xs font-bold uppercase text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">Pillar 4: RECOMMEND</span>
+          <h2 class="text-xl font-bold text-slate-900 mt-1">Data-Driven Career Recommendations</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Recommendations mapped against student diagnostic scores and regional industry demand in J&amp;K.</p>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div class="border-2 border-emerald-500 bg-emerald-50/40 p-4 rounded-xl flex flex-col justify-between">
+              <div>
+                <span class="text-xs font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">91% Match • High J&amp;K Demand</span>
+                <h3 class="text-sm font-bold text-slate-900 mt-2">Horticultural Technologist &amp; Cold Chain Specialist</h3>
+                <p class="text-xs text-slate-600 mt-1">High regional demand in apple, walnut, and saffron logistics networks.</p>
+              </div>
+              <div class="mt-3 pt-2 border-t border-emerald-200 text-xs text-slate-500">
+                <strong>Pathway:</strong> 10+2 &rarr; B.Sc Horticulture (SKUAST-K) via PMSSS Scholarship.
+              </div>
+            </div>
+
+            <div class="border border-slate-200 bg-slate-50 p-4 rounded-xl flex flex-col justify-between">
+              <div>
+                <span class="text-xs font-bold bg-slate-200 text-slate-800 px-2 py-0.5 rounded">82% Match • Emerging Sector</span>
+                <h3 class="text-sm font-bold text-slate-900 mt-2">Renewable Energy Systems Technician</h3>
+                <p class="text-xs text-slate-600 mt-1">Aligned with J&amp;K micro-hydro and rural solar electrification programs.</p>
+              </div>
+              <div class="mt-3 pt-2 border-t border-slate-200 text-xs text-slate-500">
+                <strong>Pathway:</strong> Polytechnic Diploma in Electrical / Renewable Engineering.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= 6. WELLBEING CHECK-IN ================= -->
+      <div id="view-wellbeing" class="hidden max-w-2xl mx-auto space-y-4">
+        <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          <span class="text-xs font-bold uppercase text-purple-600 bg-purple-50 px-2 py-0.5 rounded">Student Support</span>
+          <h2 class="text-lg font-bold text-slate-900 mt-1">Anonymous Mental Health &amp; Stress Check-In</h2>
+          <p class="text-xs text-slate-500 mt-1">Let your teachers know how you're feeling during school disruptions.</p>
+
+          <div class="grid grid-cols-3 gap-3 my-5">
+            <button onclick="handleMood('good')" class="p-3 border rounded-xl hover:border-emerald-500 text-center">
+              <div class="text-2xl">😊</div>
+              <span class="text-xs font-semibold text-slate-700 mt-1 block">Doing Well</span>
+            </button>
+            <button onclick="handleMood('medium')" class="p-3 border rounded-xl hover:border-amber-500 text-center">
+              <div class="text-2xl">😐</div>
+              <span class="text-xs font-semibold text-slate-700 mt-1 block">Slightly Stressed</span>
+            </button>
+            <button onclick="handleMood('high')" class="p-3 border rounded-xl hover:border-rose-500 text-center">
+              <div class="text-2xl">😟</div>
+              <span class="text-xs font-semibold text-slate-700 mt-1 block">Overwhelmed</span>
+            </button>
+          </div>
+
+          <div id="counselor-prompt" class="hidden p-3.5 bg-rose-50 border border-rose-200 rounded-xl space-y-2">
+            <p class="text-xs text-rose-900 font-semibold">Your response has been registered. Would you like a confidential session with the school counselor?</p>
+            <button onclick="alert('Counselor request submitted.')" class="px-4 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-bold">Request Support Session</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-2 px-6 text-[11px] text-slate-500 flex items-center justify-between flex-shrink-0">
+      <div>Smart India Hackathon 2026 • Government of Jammu &amp; Kashmir</div>
+      <div>Team: <strong>Mayank, Yaksh, Raja, Ved, Janvi, Mahi</strong></div>
+    </footer>
+  </div>
+
+  <!-- ================= NUDGE POPUP MODAL ================= -->
+  <div id="nudge-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl max-w-md w-full p-5 shadow-2xl space-y-3">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h4 class="font-bold text-slate-900 text-sm">Send Multilingual Guardian Nudge</h4>
+        <button onclick="closeNudgeModal()" class="text-slate-400 hover:text-slate-600"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <p class="text-xs text-slate-600">Simulating SMS/IVR trigger for parents and student:</p>
+      <div class="p-3 bg-slate-100 rounded text-xs font-mono text-slate-800">
+        [EduCare J&amp;K]: Student <span id="nudge-modal-student">Rohan Sharma</span> has missed 16 days. Remedial materials have been synced. Reply 1 for teacher assistance.
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button onclick="confirmNudge()" class="flex-1 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700">Confirm &amp; Send</button>
+        <button onclick="closeNudgeModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= SCRIPTS ================= -->
+  <script>
+    // Tab switching with Left Sidebar
+    function switchTab(tabId) {
+      const tabs = ['overview', 'teacher', 'student', 'lessons', 'career', 'wellbeing'];
+      const titles = {
+        'overview': 'System Overview',
+        'teacher': 'Teacher Retention Portal',
+        'student': 'Diagnostic & Remediation',
+        'lessons': 'Offline Micro-Lessons',
+        'career': 'Data-Driven Career Pathways',
+        'wellbeing': 'Student Wellbeing & Counseling'
+      };
+
+      tabs.forEach(t => {
+        const view = document.getElementById(`view-${t}`);
+        const btn = document.getElementById(`side-${t}`);
+        if (view) view.classList.add('hidden');
+        if (btn) {
+          btn.classList.remove('sidebar-item-active');
+          btn.classList.add('text-slate-400');
+        }
+      });
+
+      const activeView = document.getElementById(`view-${tabId}`);
+      const activeBtn = document.getElementById(`side-${tabId}`);
+      if (activeView) activeView.classList.remove('hidden');
+      if (activeBtn) {
+        activeBtn.classList.add('sidebar-item-active');
+        activeBtn.classList.remove('text-slate-400');
+      }
+
+      document.getElementById('view-title').innerText = titles[tabId] || 'EduCare Dashboard';
+    }
+
+    // Toggle Sidebar for mobile
+    function toggleSidebar() {
+      const sb = document.getElementById('sidebar');
+      sb.classList.toggle('hidden');
+    }
+
+    // Interactive Risk Calculator
+    function updateDemoRisk() {
+      const att = parseInt(document.getElementById('demo-att').value);
+      const quiz = parseInt(document.getElementById('demo-quiz').value);
+      const days = parseInt(document.getElementById('demo-days').value);
+
+      document.getElementById('demo-att-val').innerText = `${att}%`;
+      document.getElementById('demo-quiz-val').innerText = `${quiz}%`;
+      document.getElementById('demo-days-val').innerText = `${days} Days`;
+
+      const score = Math.round((100 - att) * 0.40 + (100 - quiz) * 0.35 + Math.min((days / 30) * 100, 100) * 0.25);
+      const valEl = document.getElementById('demo-risk-val');
+      const tagEl = document.getElementById('demo-risk-tag');
+      const cardEl = document.getElementById('demo-result-card');
+
+      valEl.innerText = `${score}%`;
+
+      if (score >= 60) {
+        valEl.className = "text-2xl font-black text-rose-600 my-0.5";
+        tagEl.className = "inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-200 text-rose-800";
+        tagEl.innerText = "High Risk Level";
+        cardEl.className = "p-3 rounded-xl bg-rose-50 border border-rose-200 text-center";
+      } else if (score >= 35) {
+        valEl.className = "text-2xl font-black text-amber-600 my-0.5";
+        tagEl.className = "inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-800";
+        tagEl.innerText = "Moderate Risk Level";
+        cardEl.className = "p-3 rounded-xl bg-amber-50 border border-amber-200 text-center";
+      } else {
+        valEl.className = "text-2xl font-black text-emerald-600 my-0.5";
+        tagEl.className = "inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200 text-emerald-800";
+        tagEl.innerText = "Low Risk (On Track)";
+        cardEl.className = "p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-center";
+      }
+    }
+
+    function loadStudentForDemo(name, att, quiz, days) {
+      document.getElementById('demo-student-name').innerText = name;
+      document.getElementById('nudge-modal-student').innerText = name;
+      document.getElementById('demo-att').value = att;
+      document.getElementById('demo-quiz').value = quiz;
+      document.getElementById('demo-days').value = days;
+      updateDemoRisk();
+    }
+
+    // Modal Control
+    function openNudgeModal() { document.getElementById('nudge-modal').classList.remove('hidden'); }
+    function closeNudgeModal() { document.getElementById('nudge-modal').classList.add('hidden'); }
+    function confirmNudge() {
+      alert("SMS / IVR notification queued successfully!");
+      closeNudgeModal();
+    }
+
+    // Diagnostic Questions
+    function recordAnswerStep(qNum, isCorrect) {
+      document.getElementById(`diag-card-${qNum}`).classList.add('hidden');
+      const nextQ = qNum + 1;
+      const nextEl = document.getElementById(`diag-card-${nextQ}`);
+      if (nextEl) {
+        nextEl.classList.remove('hidden');
+        document.getElementById('diag-tracker').innerText = `Question ${nextQ} of 3`;
+      }
+    }
+
+    function finishAssessment(choice) {
+      document.getElementById('diag-card-3').classList.add('hidden');
+      document.getElementById('diag-summary').classList.remove('hidden');
+      document.getElementById('diag-tracker').innerText = 'Completed';
+    }
+
+    // Offline simulation
+    function downloadLesson(id) {
+      const btn = document.getElementById(`dl-${id}`);
+      btn.innerText = "Cached";
+      btn.className = "px-3 py-1.5 bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-lg text-xs font-semibold";
+      localStorage.setItem(`rasta_lesson_${id}`, 'true');
+    }
+
+    let isOffline = false;
+    function toggleOffline() {
+      isOffline = !isOffline;
+      const banner = document.getElementById('offline-banner');
+      const txt = document.getElementById('network-status');
+      const icon = document.getElementById('network-icon');
+
+      if (isOffline) {
+        banner.classList.remove('hidden');
+        txt.innerText = "Offline";
+        txt.className = "text-xs font-semibold text-amber-500";
+        icon.className = "ph-bold ph-wifi-slash text-amber-500 text-sm";
+      } else {
+        banner.classList.add('hidden');
+        txt.innerText = "Online";
+        txt.className = "text-xs font-semibold text-emerald-600";
+        icon.className = "ph-bold ph-wifi-high text-emerald-600 text-sm";
+      }
+    }
+
+    function handleMood(type) {
+      const box = document.getElementById('counselor-prompt');
+      if (type === 'high') {
+        box.classList.remove('hidden');
+      } else {
+        box.classList.add('hidden');
+        alert("Thanks for checking in! Keep up your study progress.");
+      }
+    }
+
+    function setLang(lang) {
+      ['en', 'ur', 'ks'].forEach(l => {
+        const el = document.getElementById(`lang-${l}`);
+        if (l === lang) {
+          el.className = "px-2 py-0.5 rounded bg-sky-600 text-white font-semibold";
+        } else {
+          el.className = "px-2 py-0.5 rounded text-slate-600 hover:text-slate-900";
+        }
+      });
+    }
+
+    // Initialize Map & Charts
+    window.addEventListener('DOMContentLoaded', () => {
+      // Donut Chart
+      new Chart(document.getElementById('overviewDonut').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: ['High', 'Med', 'Low'],
+          datasets: [{
+            data: [12.4, 28.7, 58.9],
+            backgroundColor: ['#ef4444', '#f59e0b', '#10b981'],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          cutout: '70%'
+        }
+      });
+
+      // Leaflet Map for J&K
+      const map = L.map('overview-map', { attributionControl: false, zoomControl: false }).setView([33.7782, 74.8570], 6);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 9, minZoom: 5 }).addTo(map);
+
+      const districtPoints = [
+        { name: "Kupwara", lat: 34.5262, lng: 74.2546, color: "#ef4444" },
+        { name: "Baramulla", lat: 34.2095, lng: 74.3436, color: "#ef4444" },
+        { name: "Srinagar", lat: 34.0837, lng: 74.7973, color: "#f59e0b" },
+        { name: "Anantnag", lat: 33.7311, lng: 75.1522, color: "#f59e0b" },
+        { name: "Jammu", lat: 32.7266, lng: 74.8570, color: "#10b981" }
+      ];
+
+      districtPoints.forEach(d => {
+        L.circleMarker([d.lat, d.lng], {
+          radius: 5,
+          color: d.color,
+          fillColor: d.color,
+          fillOpacity: 0.85,
+          weight: 2
+        }).bindTooltip(`<b>${d.name}</b>`, { direction: 'top' }).addTo(map);
+      });
+
+      updateDemoRisk();
+    });
+  </script>
+</body>
+</html>
